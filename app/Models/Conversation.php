@@ -3,14 +3,24 @@
 namespace App\Models;
 
 use App\Models\Message;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use \Staudenmeir\EloquentJsonRelations\HasJsonRelationships;
 
 class Conversation extends Model
 {
-    use HasFactory;
+    use HasFactory, HasJsonRelationships;
 
     protected $guarded = [];
+
+    protected $casts = [
+        'members' => 'array',
+    ];
+
+    public function setMembers(){
+        return json_decode($this->members, true);
+    }
 
     public function messages(){
         return $this->hasMany(Message::class, 'conversation_id', 'id');
@@ -34,4 +44,10 @@ class Conversation extends Model
     public function user2(){
         return $this->belongsTo(User::class, 'user2', 'id');
     }
+
+    public function users(){
+        return $this->belongsToJson(User::class, 'members');
+    }
+
+    
 }

@@ -79,7 +79,7 @@
                         </div>
                         <div class="card-body msg_card_body">
                             <div
-                                v-for="message in conversation.messages"
+                                v-for="message in chatMessages"
                                 :key="message.id"
                                 :class="leftRight(message.to_user)"
                             >
@@ -161,18 +161,20 @@ export default {
             activeUserProfile: false,
             message: null,
             typing: false,
+            selectedConversation: localStorage.getItem("conversation_id"),
+            chats: [],
         };
     },
     mounted() {
         this.getUserMessages();
         this.activeUserInfo();
-        this.receiveMessage();
     },
     methods: {
         listen() {},
         makeUserActive(userid) {
             this.activeUser = userid;
             this.getUserMessages();
+            //this.receiveMessage();
         },
         getUserMessages() {
             if (this.activeUser != 0) {
@@ -180,6 +182,8 @@ export default {
                     .get("/get_conversation/" + this.activeUser)
                     .then((response) => {
                         this.conversation = response.data;
+                        this.chats = response.data.messages;
+                        //this.receiveMessage();
                     });
             }
         },
@@ -195,11 +199,6 @@ export default {
         },
         isTyping() {
             let channel = Echo.private("messages." + this.conversation.id);
-
-            channel.listen("MessageReceiveEvent", (e) => {
-                console.log(e);
-            });
-
             setTimeout(function () {
                 channel.whisper("typing", {
                     user: this.user,
@@ -219,18 +218,28 @@ export default {
             this.message = "";
         },
         receiveMessage() {
-            Echo.private("messaging." + this.conversation.id).listen(
-                "MessagingEvent",
+            let conversationId =
+                this.conversation.id != undefined
+                    ? this.conversation.id
+                    : this.selectedConversation;
+            Echo.private("messages." + conversationId).listen(
+                "MessageReceiveEvent",
                 function (e) {
+                    //this.conversation.messages = e.messages;
+                    this.chats = [];
+                    this.chats.push(e.messages);
                     console.log(e);
                 }
             );
         },
     },
     created() {
-        if (this.conversation) {
-            Echo.private("messages." + this.conversation.id)
+        this.receiveMessage();
+        console.log(this.selectedConversation);
+        if (this.selectedConversation) {
+            Echo.private("messages." + this.selectedConversation)
                 .listen("MessageReceiveEvent", function (e) {
+                    this.chats.push(e.messages);
                     console.log(e);
                 })
                 .listenForWhisper("typing", (e) => {
@@ -243,7 +252,33 @@ export default {
                 });
         }
     },
-    watch() {},
+    computed: {
+        chatMessages() {
+            return this.chats;
+            if (
+                JSON.stringify(this.conversation.messages) !=
+                JSON.stringify(this.chats)
+            ) {
+                console.log(this.chats, 1);
+                return this.chats;
+            } else {
+                console.log(this.chats, 2);
+                return this.conversation.messages;
+            }
+        },
+    },
+    watch: {
+        chatMessages() {
+            if (
+                JSON.stringify(this.conversation.messages) !=
+                JSON.stringify(this.chats)
+            ) {
+                return this.chats;
+            } else {
+                return this.conversation.messages;
+            }
+        },
+    },
 };
 </script>
 

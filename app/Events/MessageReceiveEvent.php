@@ -30,7 +30,7 @@ class MessageReceiveEvent implements ShouldBroadcast
     {
         $this->user = $user;
         $this->conversation = $conversation;
-        $this->messages = $this->conversation->messages();
+        $this->messages = $this->conversation->messages()->get();
     }
 
     /**

@@ -28872,10 +28872,11 @@ __webpack_require__.r(__webpack_exports__);
     onlineStatus: function onlineStatus(userid) {
       return this.onlineUsers.includes(userid) ? "Online" : "Offline";
     },
-    makeUserActive: function makeUserActive(userId) {
+    makeUserActive: function makeUserActive(userId, conversation) {
       this.activeUser = userId;
       this.getActive(userId);
       localStorage.setItem("selected_user", userId);
+      localStorage.setItem("conversation_id", conversation);
     }
   }
 });
@@ -28916,19 +28917,20 @@ _fortawesome_fontawesome_svg_core__WEBPACK_IMPORTED_MODULE_2__.library.add(_fort
       conversation: false,
       activeUserProfile: false,
       message: null,
-      typing: false
+      typing: false,
+      selectedConversation: localStorage.getItem("conversation_id"),
+      chats: []
     };
   },
   mounted: function mounted() {
     this.getUserMessages();
     this.activeUserInfo();
-    this.receiveMessage();
   },
   methods: {
     listen: function listen() {},
     makeUserActive: function makeUserActive(userid) {
       this.activeUser = userid;
-      this.getUserMessages();
+      this.getUserMessages(); //this.receiveMessage();
     },
     getUserMessages: function getUserMessages() {
       var _this2 = this;
@@ -28936,6 +28938,7 @@ _fortawesome_fontawesome_svg_core__WEBPACK_IMPORTED_MODULE_2__.library.add(_fort
       if (this.activeUser != 0) {
         axios.get("/get_conversation/" + this.activeUser).then(function (response) {
           _this2.conversation = response.data;
+          _this2.chats = response.data.messages; //this.receiveMessage();
         });
       }
     },
@@ -28951,9 +28954,6 @@ _fortawesome_fontawesome_svg_core__WEBPACK_IMPORTED_MODULE_2__.library.add(_fort
     },
     isTyping: function isTyping() {
       var channel = Echo["private"]("messages." + this.conversation.id);
-      channel.listen("MessageReceiveEvent", function (e) {
-        console.log(e);
-      });
       setTimeout(function () {
         channel.whisper("typing", {
           user: this.user,
@@ -28973,7 +28973,11 @@ _fortawesome_fontawesome_svg_core__WEBPACK_IMPORTED_MODULE_2__.library.add(_fort
       this.message = "";
     },
     receiveMessage: function receiveMessage() {
-      Echo["private"]("messaging." + this.conversation.id).listen("MessagingEvent", function (e) {
+      var conversationId = this.conversation.id != undefined ? this.conversation.id : this.selectedConversation;
+      Echo["private"]("messages." + conversationId).listen("MessageReceiveEvent", function (e) {
+        //this.conversation.messages = e.messages;
+        this.chats = [];
+        this.chats.push(e.messages);
         console.log(e);
       });
     }
@@ -28981,8 +28985,12 @@ _fortawesome_fontawesome_svg_core__WEBPACK_IMPORTED_MODULE_2__.library.add(_fort
   created: function created() {
     var _this4 = this;
 
-    if (this.conversation) {
-      Echo["private"]("messages." + this.conversation.id).listen("MessageReceiveEvent", function (e) {
+    this.receiveMessage();
+    console.log(this.selectedConversation);
+
+    if (this.selectedConversation) {
+      Echo["private"]("messages." + this.selectedConversation).listen("MessageReceiveEvent", function (e) {
+        this.chats.push(e.messages);
         console.log(e);
       }).listenForWhisper("typing", function (e) {
         _this4.user = e.user;
@@ -28994,7 +29002,28 @@ _fortawesome_fontawesome_svg_core__WEBPACK_IMPORTED_MODULE_2__.library.add(_fort
       });
     }
   },
-  watch: function watch() {}
+  computed: {
+    chatMessages: function chatMessages() {
+      return this.chats;
+
+      if (JSON.stringify(this.conversation.messages) != JSON.stringify(this.chats)) {
+        console.log(this.chats, 1);
+        return this.chats;
+      } else {
+        console.log(this.chats, 2);
+        return this.conversation.messages;
+      }
+    }
+  },
+  watch: {
+    chatMessages: function chatMessages() {
+      if (JSON.stringify(this.conversation.messages) != JSON.stringify(this.chats)) {
+        return this.chats;
+      } else {
+        return this.conversation.messages;
+      }
+    }
+  }
 });
 
 /***/ }),
@@ -33170,10 +33199,12 @@ var render = /*#__PURE__*/_withId(function (_ctx, _cache, $props, $setup, $data,
   }, {
     "default": _withId(function () {
       return [((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(true), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createBlock)(vue__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderList)($props.contacts, function (contact) {
-        return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createBlock)("li", null, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", {
+        return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createBlock)("li", {
+          key: contact.id
+        }, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", {
           "class": $options.activeUserHighlight(contact.id),
           onClick: function onClick($event) {
-            return $options.makeUserActive(contact.id);
+            return $options.makeUserActive(contact.id, contact.conversations[0].id);
           }
         }, [_hoisted_1, (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", _hoisted_2, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("span", null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)(contact.name), 1
         /* TEXT */
@@ -33182,8 +33213,8 @@ var render = /*#__PURE__*/_withId(function (_ctx, _cache, $props, $setup, $data,
         )])], 10
         /* CLASS, PROPS */
         , ["onClick"])]);
-      }), 256
-      /* UNKEYED_FRAGMENT */
+      }), 128
+      /* KEYED_FRAGMENT */
       ))];
     }),
     _: 1
@@ -33395,7 +33426,7 @@ var render = /*#__PURE__*/_withId(function (_ctx, _cache, $props, $setup, $data,
       /* PROPS */
       , ["onlineUsers", "contacts", "getActive", "activeUserInfo"])]), _hoisted_12])]), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", _hoisted_13, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", _hoisted_14, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", _hoisted_15, [(0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", _hoisted_16, [_hoisted_17, (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", _hoisted_18, [_hoisted_19, $data.conversation ? ((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createBlock)("p", _hoisted_20, (0,vue__WEBPACK_IMPORTED_MODULE_0__.toDisplayString)($data.conversation.messages.length), 1
       /* TEXT */
-      )) : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("v-if", true)]), _hoisted_21]), _hoisted_22, _hoisted_23]), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", _hoisted_24, [((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(true), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createBlock)(vue__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderList)($data.conversation.messages, function (message) {
+      )) : (0,vue__WEBPACK_IMPORTED_MODULE_0__.createCommentVNode)("v-if", true)]), _hoisted_21]), _hoisted_22, _hoisted_23]), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createVNode)("div", _hoisted_24, [((0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(true), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createBlock)(vue__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, (0,vue__WEBPACK_IMPORTED_MODULE_0__.renderList)($options.chatMessages, function (message) {
         return (0,vue__WEBPACK_IMPORTED_MODULE_0__.openBlock)(), (0,vue__WEBPACK_IMPORTED_MODULE_0__.createBlock)("div", {
           key: message.id,
           "class": $options.leftRight(message.to_user)

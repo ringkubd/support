@@ -18,7 +18,12 @@ class ChatController extends Controller
      */
     public function index()
     {
-        $friends = User::where('id', '!=', auth()->user()->id)->get();
+        $friends = User::where('users.id', '!=', auth()->user()->id)
+        ->with('conversations')
+        ->with(['conversations' => function($q){
+            $q->whereJsonContains('members', auth()->user()->id);
+        }])
+        ->get();
         return Inertia::render('Chat/inbox', [
             "friends" => $friends
         ]);
@@ -51,7 +56,7 @@ class ChatController extends Controller
 
         $conversation = Conversation::find($request->conversation_id);
         $conversation->messages()->create($request->all());
-        //broadcast(new MessageReceiveEvent(auth()->user(), $conversation));
+        broadcast(new MessageReceiveEvent(auth()->user(), $conversation))->toOthers();
         broadcast(new MessagingEvent(auth()->user(), $conversation));
         return $conversation;
     }

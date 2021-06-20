@@ -21,7 +21,7 @@ Broadcast::channel('chat', function ($user){
 });
 
 Broadcast::channel('messages.{conversation}', function ($user, Conversation $conversation){
-    $conversation_user = json_decode($conversation->members);
+    $conversation_user = $conversation->members;
     if (in_array($user->id, $conversation_user)){
         return true;
     }

@@ -1,9 +1,9 @@
 <template>
     <ui class="contacts">
-        <li v-for="contact in contacts">
+        <li v-for="contact in contacts" :key="contact.id">
             <div
                 :class="activeUserHighlight(contact.id)"
-                @click="makeUserActive(contact.id)"
+                @click="makeUserActive(contact.id, contact.conversations[0].id)"
             >
                 <div class="img_cont">
                     <img
@@ -13,7 +13,7 @@
                     <span class="online_icon"></span>
                 </div>
                 <div class="user_info">
-                    <span>{{ contact.name }}</span>
+                    <span>{{ contact.name }} </span>
                     <p>{{ onlineStatus(contact.id) }}</p>
                 </div>
             </div>
@@ -40,10 +40,11 @@ export default {
         onlineStatus(userid) {
             return this.onlineUsers.includes(userid) ? "Online" : "Offline";
         },
-        makeUserActive(userId) {
+        makeUserActive(userId, conversation) {
             this.activeUser = userId;
             this.getActive(userId);
             localStorage.setItem("selected_user", userId);
+            localStorage.setItem("conversation_id", conversation);
         },
     },
 };

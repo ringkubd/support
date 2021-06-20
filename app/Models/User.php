@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Conversation;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,6 +11,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
+use Staudenmeir\EloquentJsonRelations\HasJsonRelationships;
 
 class User extends Authenticatable
 {
@@ -19,6 +21,7 @@ class User extends Authenticatable
     use HasTeams;
     use Notifiable;
     use TwoFactorAuthenticatable;
+    use HasJsonRelationships;
 
     /**
      * The attributes that are mass assignable.
@@ -58,4 +61,14 @@ class User extends Authenticatable
     protected $appends = [
         'profile_photo_url',
     ];
+
+    public function conversation(){
+        return Conversation::all()->filter(function($member){
+            return in_array($this->id, $member->members) ? $member : null;
+        });
+    }
+
+    public function conversations(){
+        return $this->hasManyJson(Conversation::class, 'members');
+    }
 }
